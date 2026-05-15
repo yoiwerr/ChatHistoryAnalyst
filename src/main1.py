@@ -6,9 +6,10 @@ from src.core_llm import llm
 from langchain_core.prompts import ChatPromptTemplate
 from fastapi import FastAPI, HTTPException
 import re
-from src.schemas import ImportRequest, AnalysisRequest, ChatMessage, EmotionResponse
+from src.schemas import ImportRequest, AnalysisRequest, ChatMessage, EmotionResponse,AtmosphereResponse
 from src.skills.skill02_emotion import execute_emotion_skill
 from src.skills.skill01_imitate import execute_imitate_skill
+from src.skills.skill03_atmosphere import execute_atmosphere_skill
 
 app = FastAPI(title="Chat Analysis Agent API", version="1.0")
 @app.post("/api/v1/import_chat", tags=["Data Processing"])
@@ -71,7 +72,15 @@ async def skill_emotion(request: AnalysisRequest):
     result = await execute_emotion_skill(request)
     return result
 
-# 你可以先预留其他技能的空路由
-@app.post("/api/v1/emotion_analyze", tags=["Skills"])
-async def skill_emotion(request: AnalysisRequest):
-    pass
+@app.post("/api/v1/analyze_atmosphere", response_model=AtmosphereResponse, tags=["Skills"])
+async def skill_atmosphere(request: AnalysisRequest):
+    """
+    Skill 3: 聊天气氛分析与沟通建议 (Demo版)
+    """
+    result = await execute_atmosphere_skill(request)
+    return result
+
+# # 你可以先预留其他技能的空路由
+# @app.post("/api/v1/emotion_analyze", tags=["Skills"])
+# async def skill_emotion(request: AnalysisRequest):
+#     pass

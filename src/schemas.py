@@ -38,3 +38,19 @@ class EmotionResponse(BaseModel):
         description="基于聊天记录的详细分析推导过程，解释为什么给出上述得分和标签"
     )
 # 如果你后续做 Skill 2，可以在这里继续添加 EmotionResponse
+class AtmosphereResponse(BaseModel):
+    """
+    Skill 3: 聊天气氛与沟通姿态分析的结构化输出
+    """
+    atmosphere_summary: str = Field(
+        ...,
+        description="对当前聊天气氛的整体简短总结，例如：'紧张僵持'、'单方面迎合'、'轻松暧昧'等"
+    )
+    power_dynamic: str = Field(
+        ...,
+        description="双方权力动态（Power Dynamic）深度分析。明确指出是否有哪一方过于迎合、软弱或处于劣势，并给出判断依据。"
+    )
+    actionable_suggestions: List[str] = Field(
+        ...,
+        description="给出的具体聊天建议列表，至少包含两点。例如如何改善卑微姿态、如何不卑不亢地夺回话语权等。"
+    )

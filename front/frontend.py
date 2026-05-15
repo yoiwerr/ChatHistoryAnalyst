@@ -96,34 +96,48 @@ with col2:
                     st.write(f"**主导情绪：** {data.get('dominant_emotion')}")
                     st.write(f"**分析依据：** {data.get('analysis_reasoning')}")
                 else:
-                    st.error("后端连接失败。")
+                    # 核心修改：打印出真实的错误码和后端返回的详细报错信息
+                    st.error(f"请求失败！HTTP 状态码: {response.status_code}")
+                    st.code(response.text)
         else:
             st.warning("请先输入聊天记录。")
 
 with col3:
-    if st.button("🔮 预测对话走向", use_container_width=True):
+    if st.button("🔮 气氛分析", use_container_width=True):
         if chat_input:
-            with st.spinner("Agent 正在推演未来走向..."):
-                response = requests.post(f"{BASE_URL}/predict_trend", json=build_payload())
-                if response.status_code == 200:
-                    st.success("推演完成！")
-                    predictions = response.json().get('predictions', [])
-                    for i, pred in enumerate(predictions):
-                        st.write(f"{i + 1}. {pred}")
-                else:
-                    st.error("后端连接失败。")
-        else:
-            st.warning("请先输入聊天记录。")
+            # 1. 更新加载提示语
+            with st.spinner("Agent 正在深度解析聊天气氛与权力动态..."):
 
-with col4:
-    if st.button("🕵️ 洞察弦外之音", use_container_width=True):
-        if chat_input:
-            with st.spinner("Agent 正在结合 RAG 知识库深度解码..."):
-                response = requests.post(f"{BASE_URL}/read_between_lines", json=build_payload())
+                # 2. 确保请求路径完整，拼接上 /api/v1/
+                target_url = f"{BASE_URL}/analyze_atmosphere"
+                response = requests.post(target_url, json=build_payload())
+
                 if response.status_code == 200:
-                    st.success("解码完成！")
-                    st.write(f"**潜台词分析：** {response.json().get('hidden_meaning')}")
+                    st.success("气氛分析完成！")
+
+                    # 3. 解析后端返回的新 JSON 数据结构
+                    result = response.json()
+                    summary = result.get('atmosphere_summary', '无总结数据')
+                    power = result.get('power_dynamic', '无权力动态数据')
+                    suggestions = result.get('actionable_suggestions', [])
+
+                    # 4. 使用 Streamlit 组件优雅地展示这些数据
+                    st.markdown("### 📊 气氛整体总结")
+                    st.info(summary)  # 使用 info 组件高亮显示总结
+
+                    st.markdown("### ⚖️ 权力动态剖析")
+                    st.write(power)
+
+                    st.markdown("### 💡 具体行动建议")
+                    if suggestions:
+                        for i, advice in enumerate(suggestions):
+                            # 使用 markdown 渲染带有编号的建议，视觉效果更好
+                            st.markdown(f"**{i + 1}.** {advice}")
+                    else:
+                        st.write("暂无具体建议。")
+
                 else:
-                    st.error("后端连接失败。")
+                    st.error(f"请求失败！HTTP 状态码: {response.status_code}")
+                    st.code(response.text)
         else:
             st.warning("请先输入聊天记录。")

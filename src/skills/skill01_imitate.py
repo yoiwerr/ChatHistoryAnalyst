@@ -16,13 +16,18 @@ async def execute_imitate_skill(request: AnalysisRequest) -> dict:
     if not recent_chat:
         raise HTTPException(status_code=400, detail="聊天记录不能为空")
 
+    chat_transcript = "\n".join(
+        [f"[{msg.sender}:{msg.timestamp}]：{msg.content}" for msg in recent_chat if msg.sender == target_person]
+    )
+
     # 2. 构建语料样本 (Few-shot)
-    target_utterances = [msg.content for msg in recent_chat if msg.sender == target_person]
-    if not target_utterances:
+    # target_utterances = [msg.content for msg in recent_chat if msg.sender == target_person]
+
+    if not chat_transcript:
         raise HTTPException(status_code=400, detail=f"聊天记录中未找到目标人物 '{target_person}' 的发言。")
 
-    # 将历史发言用清晰的列表格式拼接
-    few_shot_text = "\n".join([f"- {text}" for text in target_utterances])
+    # # 将历史发言用清晰的列表格式拼接
+    # few_shot_text = "\n".join([f"- {text}" for text in target_utterances])
 
     # 3. 提取触发句 (寻找最后一条非目标人物的发言)
     trigger_message = ""
@@ -60,7 +65,7 @@ async def execute_imitate_skill(request: AnalysisRequest) -> dict:
     try:
         response = await chain.ainvoke({
             "target_person": target_person,
-            "few_shot_text": few_shot_text,
+            "few_shot_text": chat_transcript,
             "background_info": request.background_info or "无特殊背景",
             "trigger_message": trigger_message
         })
