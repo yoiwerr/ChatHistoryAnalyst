@@ -1,5 +1,6 @@
 import streamlit as st
 import requests
+import re
 
 # 配置后端 FastAPI 的基础地址
 BASE_URL = "http://127.0.0.1:8000/api/v1"
@@ -31,11 +32,37 @@ col1, col2, col3, col4 = st.columns(4)
 
 # 辅助函数：构造请求数据
 def build_payload():
-    # 这里为了演示，我们先简单地将纯文本作为最新一条消息发送
-    # 后续我们可以引入更复杂的文本解析逻辑
+    parsed_chats = []
+
+    # 使用正则解析输入的聊天记录格式: [发送者 时间]: 内容
+    pattern = r"\[(.*?)\s+(.*?)\]:\s*(.*)"
+
+    # 逐行解析文本框的内容
+    for line in chat_input.strip().split("\n"):
+        line = line.strip()
+        if not line:
+            continue
+
+        match = re.match(pattern, line)
+        if match:
+            sender, time, content = match.groups()
+            parsed_chats.append({
+                "sender": sender,
+                "content": content,
+                "timestamp": time
+            })
+
+    # 兼容处理：如果用户没有按标准格式输入，就默认将全部文本视为“我”发给 Agent 的单条消息
+    if not parsed_chats:
+        parsed_chats = [{
+            "sender": "我",
+            "content": chat_input,
+            "timestamp": "now"
+        }]
+
     return {
         "target_person": target_person,
-        "recent_chat": [{"sender": target_person, "content": chat_input, "timestamp": "now"}],
+        "recent_chat": parsed_chats,
         "background_info": background_info
     }
 
@@ -51,7 +78,9 @@ with col1:
                     st.success("分析完成！")
                     st.info(f"**模拟回复：** {response.json().get('reply')}")
                 else:
-                    st.error("后端连接失败，请检查 FastAPI 服务。")
+                    # 核心修改：打印出真实的错误码和后端返回的详细报错信息
+                    st.error(f"请求失败！HTTP 状态码: {response.status_code}")
+                    st.code(response.text)
         else:
             st.warning("请先输入聊天记录。")
 

@@ -1,8 +1,31 @@
 from fastapi import FastAPI, HTTPException
+from langgraph.checkpoint.memory import MemorySaver
 from pydantic import BaseModel,Field
 from typing import List, Optional
 import re
+import os
+from langchain.agents import create_agent
+from langchain.chat_models import init_chat_model
+from dotenv import load_dotenv
+from langchain_core.prompts import ChatPromptTemplate
 
+#初始化agent
+load_dotenv()
+base_url = os.getenv("DASHSCOPE_BASE_URL")
+api_key = os.getenv("DASHSCOPE_API_KEY")
+
+model_q = init_chat_model(
+    model = "qwen3-max",
+    model_provider = "openai",
+    base_url = base_url,
+    api_key = api_key
+)
+tools = []
+agent = create_agent(
+    model = model_q,
+    checkpointer = MemorySaver(),
+    tools = tools
+)
 # 初始化 FastAPI 实例
 app = FastAPI(title="Chat Analysis Agent API", version="1.0")
 
@@ -12,14 +35,14 @@ app = FastAPI(title="Chat Analysis Agent API", version="1.0")
 # ==========================================
 
 class ChatMessage(BaseModel):
-    sender: str
-    content: str
-    timestamp: str
+    sender: str = Field(..., description="发送者名称")
+    content: str = Field(..., description="文本内容")
+    timestamp: str = Field(..., description="时间戳")
 
 class AnalysisRequest(BaseModel):
-    target_person: str
-    recent_chat: List[ChatMessage]
-    background_info: Optional[str] = None # 用于 Skill 4 的额外背景
+    target_person: str = Field(..., description="目标分析对象名称")
+    recent_chat: List[ChatMessage] = Field(..., description="近期的聊天记录列表")
+    background_info: Optional[str] = Field(default=None, description="可选的补充背景信息")
 
 class EmotionResponse(BaseModel):
     emotion_score: int          # 情感分数 1-100
@@ -100,17 +123,81 @@ async def import_chat_data(request: ImportRequest):
 # 2. 定义 API 接口 (Endpoints)
 # ==========================================
 
+# ==========================================
+# 2. 定义 API 接口 (Endpoints)
+# ==========================================
+
 @app.post("/api/v1/imitate", tags=["Skills"])
 async def skill_imitate(request: AnalysisRequest):
     """
     Skill 1: 模仿聊天对象对话
     """
-    # 伪代码逻辑：
-    # 1. query = request.recent_chat[-1].content
-    # 2. few_shots = vector_db.search(query, filter={"sender": request.target_person})
-    # 3. response = llm.invoke(prompt_with_few_shots)
-    return {"status": "success", "reply": "这是模仿生成的回复内容"}
+    recent_chat = request.recent_chat
+    target_person = request.target_person
 
+    # 1. 前置校验：聊天记录不能为空
+    if not recent_chat:
+        raise HTTPException(status_code=400, detail="聊天记录不能为空")
+
+    # 2. 提取目标人物的历史发言（作为 Few-shot 样本）
+    target_utterances = [
+        msg.content for msg in recent_chat
+        if msg.sender == target_person
+    ]
+
+    if not target_utterances:
+        raise HTTPException(status_code=400,
+                            detail=f"聊天记录中未找到目标人物 '{target_person}' 的发言，无法提取模仿样本")
+
+    # 将历史发言拼接成清晰的文本列表
+    few_shot_text = "\n".join([f"- {text}" for text in target_utterances])
+
+    # 3. 寻找触发句：倒序遍历寻找最后一条非目标人物的发言
+    trigger_message = ""
+    for msg in reversed(recent_chat):
+        if msg.sender != target_person:
+            trigger_message = msg.content
+            break
+
+    if not trigger_message:
+        raise HTTPException(status_code=400, detail="未找到非目标人物的发言，无法触发回复")
+
+    # 4. LangChain 核心链路设计
+    # 构建 System Prompt，明确角色要求并注入样本
+    system_prompt = (
+        "你是一个高级社交模仿专家。你的任务是深度模仿目标人物的聊天风格，包括说话语气、口癖、标点符号习惯以及句子长度。\n"
+        "请仔细分析以下目标人物（{target_person}）的历史发言样本，学习其风格：\n"
+        "<samples>\n"
+        "{few_shot_text}\n"
+        "</samples>\n\n"
+        "参考背景信息：{background_info}\n\n"
+        "要求：请严格以目标人物的口吻回复用户的最新一句话。只输出模仿的回复内容本身，不要包含任何多余的解释、前缀或格式。"
+    )
+
+    prompt_template = ChatPromptTemplate.from_messages([
+        ("system", system_prompt),
+        ("human", "{trigger_message}")
+    ])
+
+    # 将 Prompt 和大模型通过管道符组合成 Chain
+    # 注意：这里直接使用你全局初始化的 model_q
+    chain = prompt_template | model_q
+
+    # 5. 执行 LLM 调用并返回
+    try:
+        response = await chain.ainvoke({
+            "target_person": target_person,
+            "few_shot_text": few_shot_text,
+            "background_info": request.background_info or "无特殊背景",
+            "trigger_message": trigger_message
+        })
+
+        return {
+            "status": "success",
+            "reply": response.content
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"大模型生成失败: {str(e)}")
 @app.post("/api/v1/emotion_analyze", response_model=EmotionResponse, tags=["Skills"])
 async def skill_emotion(request: AnalysisRequest):
     """
