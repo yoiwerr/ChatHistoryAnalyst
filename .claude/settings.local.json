@@ -40,7 +40,14 @@
       "Read(///wsl$/Ubuntu/home/yoiwerr/**)",
       "Bash(test -f \"//wsl.localhost/Ubuntu/home/yoiwerr/ChatHistoryAnalyst/CLAUDE.md\")",
       "Bash(echo \"  proxy: $\\(git config --global --get http.proxy\\)\")",
-      "Bash(echo \"  postBuffer: $\\(git config --global --get http.postBuffer 2>&1 || echo 'default \\(1MB\\)'\\)\")"
+      "Bash(echo \"  postBuffer: $\\(git config --global --get http.postBuffer 2>&1 || echo 'default \\(1MB\\)'\\)\")",
+      "WebFetch(domain:github.com)",
+      "WebSearch",
+      "WebFetch(domain:deepwiki.com)",
+      "Read(//c/Users/yoiwerr/.claude/**)",
+      "Read(//c/Users/yoiwerr/.claude/skills/**)",
+      "Read(//c/Users/yoiwerr/.claude/plugins/**)",
+      "Bash(claude plugin *)"
     ]
   }
 }

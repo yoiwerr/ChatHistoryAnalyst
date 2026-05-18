@@ -35,7 +35,7 @@ def build_payload():
     parsed_chats = []
 
     # 使用正则解析输入的聊天记录格式: [发送者 时间]: 内容
-    pattern = r"\[(.*?)\s+(.*?)\]:\s*(.*)"
+    pattern = r"\[(.*?)\s+(.*?)\][:：]\s*(.*)"
 
     # 逐行解析文本框的内容
     for line in chat_input.strip().split("\n"):
