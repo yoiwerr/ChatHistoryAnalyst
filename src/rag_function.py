@@ -73,6 +73,57 @@ def save_chats_to_long_term_memory(recent_chats: List[ChatMessage], target_perso
         print(f"写入向量库失败: {e}")
         return f"保存失败，数据库发生错误: {str(e)}"
 
-# 预留位置：以后处理 TXT 或多模态文件的函数也可以写在这里
-# def save_txt_to_knowledge_base(file_path: str):
-#     pass
+def import_knowledge_file(file_name: str) -> str:
+    """
+    将 data/ 目录下的 txt 资料文件切块导入心理学知识库 (knowledge_store)。
+    调用一次即可，重复调用同一文件会跳过。
+    """
+    from langchain_text_splitters import RecursiveCharacterTextSplitter
+
+    file_path = os.path.join(os.path.dirname(__file__), "..", "data", file_name)
+    file_path = os.path.abspath(file_path)
+
+    if not os.path.exists(file_path):
+        return f"文件不存在: {file_path}"
+
+    # 检查是否已导入过（按 source 文件名匹配）
+    try:
+        existing = knowledge_store.similarity_search(" ", k=1, filter={"source": file_name})
+        if existing:
+            return f"文件 {file_name} 已导入过（检测到同名 source），跳过。"
+    except Exception:
+        pass  # 首次调用时 collection 可能为空，忽略
+
+    with open(file_path, "r", encoding="utf-8") as f:
+        text = f.read()
+
+    if not text.strip():
+        return f"文件 {file_name} 为空，跳过。"
+
+    text_splitter = RecursiveCharacterTextSplitter(
+        chunk_size=500,
+        chunk_overlap=50,
+        separators=["\n\n", "\n", "。", "！", "？", "；", "，", " ", ""]
+    )
+
+    chunks = text_splitter.split_text(text)
+    docs = [
+        Document(page_content=chunk, metadata={"source": file_name, "type": "reference_book"})
+        for chunk in chunks
+    ]
+
+    try:
+        knowledge_store.add_documents(docs)
+        return f"成功将 {file_name} 导入知识库，共 {len(chunks)} 个文本块。"
+    except Exception as e:
+        return f"导入失败: {str(e)}"
+
+
+def list_imported_files() -> list:
+    """列出已导入知识库的资料文件名（去重）。"""
+    try:
+        results = knowledge_store.similarity_search(" ", k=100, filter={"type": "reference_book"})
+        sources = list(set(doc.metadata.get("source", "unknown") for doc in results))
+        return sources
+    except Exception:
+        return []

@@ -39,7 +39,7 @@ def build_payload():
     pattern = r"\[(.*?)\s+(.*?)\][:：]\s*(.*)"
 
     # 逐行解析文本框的内容
-    for line in chat_input.strip().split("\n"):
+    for line in chat_input.splitlines():
         line = line.strip()
         if not line:
             continue

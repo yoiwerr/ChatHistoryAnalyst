@@ -1,14 +1,19 @@
 # src/skills/skill02_emotion.py
+import json
 from fastapi import HTTPException
 from src.schemas import AnalysisRequest, EmotionResponse
 from src.core_llm import base_llm
-from src.tools import ALL_TOOLS, inject_chats_to_temp_db
-from langchain_core.documents import Document
+from src.tools import ALL_TOOLS
 from langchain_core.messages import SystemMessage, HumanMessage
 from langchain.agents import create_agent
 
 agent_executor = create_agent(model=base_llm, tools=ALL_TOOLS)
-structured_llm = base_llm.with_structured_output(EmotionResponse)
+
+EMOTION_SCHEMA_STR = json.dumps({
+    "emotion_score": "int (0-100, 0=极度消极, 50=中立, 100=极度积极)",
+    "dominant_emotion": "str (主导情感标签, 如 焦虑/开心/冷漠/试探)",
+    "analysis_reasoning": "str (详细分析推导过程)"
+}, ensure_ascii=False)
 
 
 async def execute_emotion_skill(request: AnalysisRequest) -> EmotionResponse:
@@ -16,31 +21,40 @@ async def execute_emotion_skill(request: AnalysisRequest) -> EmotionResponse:
         raise HTTPException(status_code=400, detail="分析失败：近期聊天记录不能为空。")
 
     try:
-        docs = [Document(page_content=f"[{c.timestamp}] {c.sender}: {c.content}") for c in request.recent_chat]
-        inject_chats_to_temp_db(docs)
-
-        chat_context = "\n".join([f"[{c.timestamp}] {c.sender}: {c.content}" for c in request.recent_chat])
-
-        sys_msg = SystemMessage(content="你是一个高级心理分析师。请按以下步骤进行分析：\n"
-                                        "1. 先调用 search_chat_history 检索目标人物在数据库中的全部历史发言，"
-                                        "了解长期的沟通模式和情绪变化趋势。\n"
-                                        "2. 再调用 search_psychology_knowledge 搜索相关的心理学理论，"
-                                        "结合历史上下文和当前聊天内容，深度分析目标人物当前的情感状态。\n"
-                                        "3. 如涉及外部事件或网络梗，可调用 web_search 补充背景。")
-        user_msg = HumanMessage(content=f"目标人物：{request.target_person}\n"
-                                        f"补充背景：{request.background_info}\n"
-                                        f"当前聊天内容：\n{chat_context}\n\n"
-                                        f"请分析 {request.target_person} 当前的情感状态，列出主导情绪、情感得分依据及心理学动因。")
-
-        agent_response = await agent_executor.ainvoke({"messages": [sys_msg, user_msg]})
-        analysis_report = agent_response["messages"][-1].content
-
-        final_result = await structured_llm.ainvoke(
-            f"根据以下心理学分析报告，提取出符合结构化要求的数据:\n\n{analysis_report}"
+        chat_context = "\n".join(
+            [f"[{c.timestamp}] {c.sender}: {c.content}" for c in request.recent_chat]
         )
-        return final_result
+
+        sys_msg = SystemMessage(content=f"""你是高级心理分析师。按以下步骤完成任务：
+
+步骤1: 调用 search_chat_history 检索 {request.target_person} 在数据库中的所有历史发言，了解其长期沟通模式和情绪变化趋势。
+步骤2: 调用 search_psychology_knowledge 搜索与当前对话内容相关的心理学理论，作为分析依据。
+步骤3: 如涉及外部事件、网络流行语或需要实时信息补充，可调用 web_search。
+步骤4: 综合分析后，以 JSON 格式输出最终结果。JSON Schema 如下：
+{EMOTION_SCHEMA_STR}
+
+只输出 JSON，不要有其他文字。""")
+
+        user_msg = HumanMessage(content=f"""目标人物：{request.target_person}
+补充背景：{request.background_info or "无"}
+当前聊天内容：
+{chat_context}
+
+请按照以上步骤进行分析，最终以 JSON 格式直接输出结果。""")
+
+        result = await agent_executor.ainvoke({"messages": [sys_msg, user_msg]})
+        raw_output = result["messages"][-1].content
+
+        # 尝试从输出中提取 JSON（LLM 可能包裹在 ```json...``` 中）
+        if "```json" in raw_output:
+            raw_output = raw_output.split("```json")[1].split("```")[0]
+        elif "```" in raw_output:
+            raw_output = raw_output.split("```")[1].split("```")[0]
+
+        return EmotionResponse.model_validate_json(raw_output.strip())
 
     except Exception as e:
-        # 如果是 Pydantic 解析 JSON 失败，或者大模型连不上，都会在这里被捕获
+        import traceback
         print(f"Error in emotion skill: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"情感分析执行失败，可能是服务超时或格式化错误：{str(e)}")
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"情感分析执行失败: {str(e)}")

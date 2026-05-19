@@ -1,6 +1,6 @@
 # src/tools.py
 from langchain_core.tools import tool
-from langchain_community.tools.tavily_search import TavilySearchResults
+from langchain_tavily import TavilySearch
 from src.rag_function import knowledge_store, save_chats_to_long_term_memory, chat_history_store
 
 # ==========================================
@@ -34,7 +34,7 @@ def search_chat_history(query: str) -> str:
 
 # 3. 联网搜索工具 (Tavily)
 # 我们直接使用 LangChain 封装好的 Tavily 工具，并为它加上中文描述
-tavily_tool = TavilySearchResults(max_results=3)
+tavily_tool = TavilySearch(max_results=3)
 tavily_tool.name = "web_search"
 tavily_tool.description = """
 当你需要搜索最新的心理学论文、网络流行语的含义、或者遇到本地知识库无法解答的外部实时信息时，调用此工具进行全网搜索。

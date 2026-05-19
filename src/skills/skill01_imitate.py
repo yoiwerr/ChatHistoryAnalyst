@@ -2,8 +2,7 @@
 from fastapi import HTTPException
 from src.schemas import AnalysisRequest
 from src.core_llm import base_llm
-from src.tools import ALL_TOOLS, inject_chats_to_temp_db
-from langchain_core.documents import Document
+from src.tools import ALL_TOOLS
 from langchain_core.messages import SystemMessage, HumanMessage
 from langchain.agents import create_agent
 
@@ -16,10 +15,6 @@ async def execute_imitate_skill(request: AnalysisRequest):
         raise HTTPException(status_code=400, detail="未提供近期聊天记录，无法进行分析。")
 
     try:
-        docs = [Document(page_content=f"[{chat.timestamp}] {chat.sender}: {chat.content}") for chat in
-                request.recent_chat]
-        inject_chats_to_temp_db(docs)
-
         chat_context = "\n".join([f"[{c.timestamp}] {c.sender}: {c.content}" for c in request.recent_chat])
 
         sys_msg = SystemMessage(content="你是一个顶级的聊天模仿大师。你需要精准模仿目标人物的语气。\n"

@@ -5,7 +5,7 @@ from src.schemas import ImportRequest, AnalysisRequest, ChatMessage, EmotionResp
 from src.skills.skill01_imitate import execute_imitate_skill
 from src.skills.skill02_emotion import execute_emotion_skill
 from src.skills.skill03_atmosphere import execute_atmosphere_skill
-from src.rag_function import save_chats_to_long_term_memory
+from src.rag_function import save_chats_to_long_term_memory, import_knowledge_file, list_imported_files
 
 app = FastAPI(title="Chat Analysis Agent API", version="1.0")
 @app.post("/api/v1/import_chat", tags=["Data Processing"])
@@ -27,8 +27,8 @@ async def import_chat_data(request: ImportRequest):
             raise HTTPException(status_code=400, detail=f"JSON 解析失败: {str(e)}")
 
     elif request.format_type == "text" and request.text_data:
-        pattern = r"\[(.*?)\s+(.*?)\]:\s*(.*)"
-        for line in request.text_data.strip().split("\n"):
+        pattern = r"\[(.*?)\s+(.*?)\][:：]\s*(.*)"
+        for line in request.text_data.splitlines():
             line = line.strip()
             if not line:
                 continue
@@ -106,7 +106,19 @@ async def add_chat_memory(request: AnalysisRequest):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"保存记忆失败: {str(e)}")
 
-# # 你可以先预留其他技能的空路由
-# @app.post("/api/v1/emotion_analyze", tags=["Skills"])
-# async def skill_emotion(request: AnalysisRequest):
-#     pass
+@app.post("/api/v1/import_knowledge", tags=["Data Processing"])
+async def import_knowledge(file_name: str):
+    """
+    内部接口：将 data/ 目录下的心理学参考资料 txt 导入知识库。
+    调用示例: POST /api/v1/import_knowledge?file_name=DBL.txt
+    每个文件只需导入一次，重复调用会自动跳过。
+    """
+    result = import_knowledge_file(file_name)
+    return {"status": "success", "message": result}
+
+
+@app.get("/api/v1/imported_files", tags=["Data Processing"])
+async def get_imported_files():
+    """查看已导入知识库的文件列表。"""
+    files = list_imported_files()
+    return {"status": "success", "imported_files": files}

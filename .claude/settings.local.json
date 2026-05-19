@@ -49,7 +49,9 @@
       "Read(//c/Users/yoiwerr/.claude/plugins/**)",
       "Bash(claude plugin *)",
       "Bash(mkdir -p ~/.claude/plugins/cache/nextlevelbuilder-ui-ux-pro-max-skill/ui-ux-pro-max/2.5.0)",
-      "Bash(cp -r ~/.claude/plugins/marketplaces/nextlevelbuilder-ui-ux-pro-max-skill/. ~/.claude/plugins/cache/nextlevelbuilder-ui-ux-pro-max-skill/ui-ux-pro-max/2.5.0/)"
+      "Bash(cp -r ~/.claude/plugins/marketplaces/nextlevelbuilder-ui-ux-pro-max-skill/. ~/.claude/plugins/cache/nextlevelbuilder-ui-ux-pro-max-skill/ui-ux-pro-max/2.5.0/)",
+      "Bash(file ./data/*.txt)",
+      "Bash(pip show *)"
     ]
   }
 }
