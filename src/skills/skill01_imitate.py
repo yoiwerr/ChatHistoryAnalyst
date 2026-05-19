@@ -1,76 +1,42 @@
-# src/skills/skill_1_imitate.py
+# src/skills/skill01_imitate.py
 from fastapi import HTTPException
-from langchain_core.prompts import ChatPromptTemplate
 from src.schemas import AnalysisRequest
-from src.core_llm import llm
+from src.core_llm import base_llm
+from src.tools import ALL_TOOLS, inject_chats_to_temp_db
+from langchain_core.documents import Document
+from langchain_core.messages import SystemMessage, HumanMessage
+from langchain.agents import create_agent
+
+agent_executor = create_agent(model=base_llm, tools=ALL_TOOLS)
 
 
-async def execute_imitate_skill(request: AnalysisRequest) -> dict:
-    """
-    执行 Skill 1: 模仿聊天对象的具体业务逻辑
-    """
-    recent_chat = request.recent_chat
-    target_person = request.target_person
+async def execute_imitate_skill(request: AnalysisRequest):
+    # 1. 前置校验：如果没有聊天记录，直接报 400 错误
+    if not request.recent_chat:
+        raise HTTPException(status_code=400, detail="未提供近期聊天记录，无法进行分析。")
 
-    # 1. 基础数据校验
-    if not recent_chat:
-        raise HTTPException(status_code=400, detail="聊天记录不能为空")
-
-    chat_transcript = "\n".join(
-        [f"[{msg.sender}:{msg.timestamp}]：{msg.content}" for msg in recent_chat if msg.sender == target_person]
-    )
-
-    # 2. 构建语料样本 (Few-shot)
-    # target_utterances = [msg.content for msg in recent_chat if msg.sender == target_person]
-
-    if not chat_transcript:
-        raise HTTPException(status_code=400, detail=f"聊天记录中未找到目标人物 '{target_person}' 的发言。")
-
-    # # 将历史发言用清晰的列表格式拼接
-    # few_shot_text = "\n".join([f"- {text}" for text in target_utterances])
-
-    # 3. 提取触发句 (寻找最后一条非目标人物的发言)
-    trigger_message = ""
-    for msg in reversed(recent_chat):
-        if msg.sender != target_person:
-            trigger_message = msg.content
-            break
-
-    if not trigger_message:
-        raise HTTPException(status_code=400, detail="未找到非目标人物的发言，无法触发回复")
-
-    # 4. 构建 LangChain Prompt 模板
-    # 设计思路：使用明确的 XML 标签 <samples> 隔离样本区，防止大模型产生幻觉
-    system_prompt = (
-        "你是一个高级社交模仿专家。你的任务是深度模仿目标人物的聊天风格，"
-        "包括说话语气、口癖、标点符号习惯以及句子长度。\n"
-        "请仔细分析以下目标人物（{target_person}）的历史发言样本，学习其风格：\n"
-        "<samples>\n"
-        "{few_shot_text}\n"
-        "</samples>\n\n"
-        "参考背景信息：{background_info}\n\n"
-        "要求：请严格以目标人物的口吻回复用户的最新一句话。"
-        "只输出模仿的回复内容本身，绝对不要包含任何多余的解释、前缀（如'某某说：'）或格式。"
-    )
-
-    prompt_template = ChatPromptTemplate.from_messages([
-        ("system", system_prompt),
-        ("human", "{trigger_message}")
-    ])
-
-    # 将 Prompt 和大模型通过 LangChain 表达式语言 (LCEL) 组合成链
-    chain = prompt_template | llm
-
-    # 5. 异步调用大模型并处理异常
     try:
-        response = await chain.ainvoke({
-            "target_person": target_person,
-            "few_shot_text": chat_transcript,
-            "background_info": request.background_info or "无特殊背景",
-            "trigger_message": trigger_message
-        })
+        docs = [Document(page_content=f"[{chat.timestamp}] {chat.sender}: {chat.content}") for chat in
+                request.recent_chat]
+        inject_chats_to_temp_db(docs)
 
-        return {"status": "success", "reply": response.content}
+        chat_context = "\n".join([f"[{c.timestamp}] {c.sender}: {c.content}" for c in request.recent_chat])
+
+        sys_msg = SystemMessage(content="你是一个顶级的聊天模仿大师。你需要精准模仿目标人物的语气。\n"
+                                        "在模仿前，请务必调用 search_chat_history 工具查询目标人物的历史发言风格。\n"
+                                        "如果聊天中涉及不懂的梗或外部实时信息（如天气），请调用 web_search。")
+
+        user_msg = HumanMessage(content=f"目标人物：{request.target_person}\n"
+                                        f"补充背景：{request.background_info}\n"
+                                        f"近期聊天记录：\n{chat_context}\n\n"
+                                        f"请预测并模仿 {request.target_person} 的下一句回复。直接输出你要回复的一句话，不要任何多余解释。")
+
+        response = await agent_executor.ainvoke({"messages": [sys_msg, user_msg]})
+        final_reply = response["messages"][-1].content
+
+        return {"reply": final_reply}
+
     except Exception as e:
-        # 捕捉模型调用可能产生的网络超时或鉴权错误
-        raise HTTPException(status_code=500, detail=f"大模型生成失败: {str(e)}")
+        # 2. 捕获底层错误（如数据库插入失败、大模型调用超时等），返回 500 错误
+        print(f"Error in imitate skill: {str(e)}")  # 在后端终端打印真实错误日志方便调试
+        raise HTTPException(status_code=500, detail=f"模仿技能执行失败，内部错误：{str(e)}")

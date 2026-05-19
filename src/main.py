@@ -10,6 +10,7 @@ from src.schemas import ImportRequest, AnalysisRequest, ChatMessage, EmotionResp
 from src.skills.skill02_emotion import execute_emotion_skill
 from src.skills.skill01_imitate import execute_imitate_skill
 from src.skills.skill03_atmosphere import execute_atmosphere_skill
+from rag_function import save_chats_to_long_term_memory
 
 app = FastAPI(title="Chat Analysis Agent API", version="1.0")
 @app.post("/api/v1/import_chat", tags=["Data Processing"])
@@ -79,6 +80,25 @@ async def skill_atmosphere(request: AnalysisRequest):
     """
     result = await execute_atmosphere_skill(request)
     return result
+
+
+@app.post("/api/v1/add_memory", tags=["Memory Management"])
+async def add_chat_memory(request: AnalysisRequest):
+    """
+    数据沉淀接口：将前端的聊天记录写入 PostgreSQL 向量库，形成长期记忆。
+    """
+    try:
+        # 调用 rag_function.py 中的核心逻辑
+        result_message = save_chats_to_long_term_memory(
+            recent_chats=request.recent_chat,
+            target_person=request.target_person
+        )
+        return {
+            "status": "success",
+            "message": result_message
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"保存记忆失败: {str(e)}")
 
 # # 你可以先预留其他技能的空路由
 # @app.post("/api/v1/emotion_analyze", tags=["Skills"])

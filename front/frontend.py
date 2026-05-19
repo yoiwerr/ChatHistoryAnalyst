@@ -27,6 +27,7 @@ st.write("请输入聊天记录")
 chat_input = st.text_area("近期聊天记录", height=150,
                           placeholder="[张三 10:00]: 你今天怎么没理我？\n[我 10:05]: 在忙项目。")
 
+
 # 将四个功能按键并排显示
 col1, col2, col3, col4 = st.columns(4)
 
@@ -70,7 +71,7 @@ def build_payload():
 # 按键逻辑处理
 # ==========================================
 with col1:
-    if st.button("🎭 模仿聊天对象", use_container_width=True):
+    if st.button("🎭 模仿聊天对象（如果想要永久留存请联系我）", use_container_width=True):
         if chat_input:
             with st.spinner("Agent 正在思考中..."):
                 response = requests.post(f"{BASE_URL}/imitate", json=build_payload())
