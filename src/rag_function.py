@@ -4,24 +4,27 @@ from dotenv import load_dotenv
 from langchain_core.documents import Document
 from typing import List
 from src.schemas import ChatMessage
-from langchain_openai import OpenAIEmbeddings
+
+# 【核心修改 1】废弃 OpenAI 兼容层，引入原生的 DashScope 向量模型
+from langchain_community.embeddings import DashScopeEmbeddings
 from langchain_postgres.vectorstores import PGVector
 
 load_dotenv()
 api_key = os.getenv("DASHSCOPE_API_KEY")
-base_url = os.getenv("DASHSCOPE_BASE_URL")
 pgpass = os.getenv("PGSQLPASSWORD")
 
 # ==========================================
 # 1. 数据库与 Embedding 配置
 # ==========================================
-# 注意：替换为你真实的 PG 数据库账号密码
-CONNECTION_STRING = f"postgresql+psycopg2://postgres:{pgpass}@localhost:5432/chatdemopg"
+CONNECTION_STRING = os.getenv(
+    "POSTGRES_URL",
+    f"postgresql+psycopg2://postgres:{pgpass}@localhost:5432/chatdemopg"
+)
 
-embeddings = OpenAIEmbeddings(
-    model = "text-embedding-v1",
-    openai_api_key = api_key,
-    openai_api_base = base_url
+# 【核心修改 2】使用 DashScope 原生向量接口
+embeddings = DashScopeEmbeddings(
+    model="text-embedding-v1",
+    dashscope_api_key=api_key
 )
 
 # 【永久库】：心理学资料、理论文献
@@ -48,13 +51,10 @@ def save_chats_to_long_term_memory(recent_chats: List[ChatMessage], target_perso
     if not recent_chats:
         return "没有接收到聊天记录。"
 
-    # 将 Pydantic 的 ChatMessage 对象转换为 LangChain 的 Document 格式
-    # 为了方便检索，我们在文本中加入目标人物的标签
     docs = []
     for chat in recent_chats:
         content = f"[{chat.timestamp}] {chat.sender}: {chat.content}"
 
-        # 封装为 Document，可以在 metadata 中存入额外信息（利用 PGVector 的 JSONB 特性）
         doc = Document(
             page_content=content,
             metadata={
@@ -65,7 +65,6 @@ def save_chats_to_long_term_memory(recent_chats: List[ChatMessage], target_perso
         )
         docs.append(doc)
 
-    # 存入聊天记录专属的向量库集合中
     try:
         chat_history_store.add_documents(docs)
         return f"成功将 {len(docs)} 条关于 {target_person} 的聊天记录存入长期记忆库！"
@@ -86,13 +85,12 @@ def import_knowledge_file(file_name: str) -> str:
     if not os.path.exists(file_path):
         return f"文件不存在: {file_path}"
 
-    # 检查是否已导入过（按 source 文件名匹配）
     try:
         existing = knowledge_store.similarity_search(" ", k=1, filter={"source": file_name})
         if existing:
             return f"文件 {file_name} 已导入过（检测到同名 source），跳过。"
     except Exception:
-        pass  # 首次调用时 collection 可能为空，忽略
+        pass
 
     with open(file_path, "r", encoding="utf-8") as f:
         text = f.read()

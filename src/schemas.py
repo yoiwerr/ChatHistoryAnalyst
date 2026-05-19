@@ -38,7 +38,6 @@ class EmotionResponse(BaseModel):
         ...,
         description="基于聊天记录的详细分析推导过程，解释为什么给出上述得分和标签"
     )
-# 如果你后续做 Skill 2，可以在这里继续添加 EmotionResponse
 class AtmosphereResponse(BaseModel):
     """
     Skill 3: 聊天气氛与沟通姿态分析的结构化输出
@@ -55,3 +54,9 @@ class AtmosphereResponse(BaseModel):
         ...,
         description="给出的具体聊天建议列表，至少包含两点。例如如何改善卑微姿态、如何不卑不亢地夺回话语权等。"
     )
+
+
+class FileUploadResponse(BaseModel):
+    status: str
+    message: str
+    parsed_chats: List[ChatMessage] = []

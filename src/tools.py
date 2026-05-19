@@ -1,11 +1,12 @@
 # src/tools.py
 from langchain_core.tools import tool
+# 1. 换回最新版推荐的导入方式，消除警告
 from langchain_tavily import TavilySearch
 from src.rag_function import knowledge_store, save_chats_to_long_term_memory, chat_history_store
 
+
 # ==========================================
 # 2. 定义 Agent 可以调用的 Tools
-# 注意：函数下方的注释 (Docstring) 是给大模型看的，千万不要删，模型靠它决定何时调用！
 # ==========================================
 
 @tool
@@ -20,6 +21,7 @@ def search_psychology_knowledge(query: str) -> str:
         return "本地心理学知识库中未找到相关内容。"
     return "\n\n".join([f"理论参考: {doc.page_content}" for doc in results])
 
+
 @tool
 def search_chat_history(query: str) -> str:
     """
@@ -32,23 +34,40 @@ def search_chat_history(query: str) -> str:
         return "未找到相关的历史聊天记录。"
     return "\n".join([f"历史记录: {doc.page_content}" for doc in results])
 
-# 3. 联网搜索工具 (Tavily)
-# 我们直接使用 LangChain 封装好的 Tavily 工具，并为它加上中文描述
-tavily_tool = TavilySearch(max_results=3)
-tavily_tool.name = "web_search"
-tavily_tool.description = """
-当你需要搜索最新的心理学论文、网络流行语的含义、或者遇到本地知识库无法解答的外部实时信息时，调用此工具进行全网搜索。
-"""
+
+# ==========================================
+# 3. 封装联网搜索工具 (强制返回纯文本字符串防止大模型 400 报错)
+# ==========================================
+# 2. 初始化最新版的 TavilySearch
+_raw_tavily = TavilySearch(max_results=3)
+
+
+@tool
+def web_search(query: str) -> str:
+    """
+    当你需要搜索最新的心理学论文、网络流行语的含义、或者遇到本地知识库无法解答的外部实时信息时，调用此工具进行全网搜索。
+    输入参数 query 是你要搜索的关键词。
+    """
+    print(f"🛠️ [Tool调用] 正在联网检索: {query}")
+    try:
+        # 调用底层工具获取数据
+        results = _raw_tavily.invoke({"query": query})
+
+        # 强制转换为纯文本字符串
+        if isinstance(results, list):
+            text_results = []
+            for idx, r in enumerate(results):
+                if isinstance(r, dict):
+                    content = r.get("content", "")
+                    text_results.append(f"结果{idx + 1}: {content}")
+            return "\n\n".join(text_results) if text_results else "未找到相关网络信息。"
+
+        # 如果是其他类型，直接强转字符串
+        return str(results)
+
+    except Exception as e:
+        return f"联网搜索失败: {str(e)}"
+
 
 # 统一导出所有工具
-ALL_TOOLS = [search_psychology_knowledge, search_chat_history, tavily_tool]
-
-# ==========================================
-# 4. 辅助函数：用于在分析前，将当前的聊天记录动态写入临时库
-# ==========================================
-def inject_chats_to_temp_db(documents):
-    """
-    将聊天记录追加到向量库，不再清空旧数据，让 RAG 能检索到历史积累的全部记录。
-    """
-    chat_history_store.add_documents(documents)
-    print(f"✅ 已向向量库追加 {len(documents)} 条聊天记录。")
+ALL_TOOLS = [search_psychology_knowledge, search_chat_history, web_search]

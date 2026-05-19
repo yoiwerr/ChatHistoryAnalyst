@@ -1,5 +1,6 @@
 # src/skills/skill03_atmosphere.py
 import json
+import re
 from fastapi import HTTPException
 from src.schemas import AnalysisRequest, AtmosphereResponse
 from src.core_llm import base_llm
@@ -9,11 +10,8 @@ from langchain.agents import create_agent
 
 agent_executor = create_agent(model=base_llm, tools=ALL_TOOLS)
 
-ATMOSPHERE_SCHEMA_STR = json.dumps({
-    "atmosphere_summary": "str (对当前聊天气氛的整体简短总结，如 紧张僵持/单方面迎合/轻松暧昧)",
-    "power_dynamic": "str (双方权力动态深度分析：指出是否有哪一方过于迎合/软弱/处于劣势，并给出判断依据)",
-    "actionable_suggestions": "list[str] (至少2条具体的沟通建议，如 如何改善卑微姿态/如何不卑不亢地夺回话语权)"
-}, ensure_ascii=False)
+# 动态生成 Schema
+ATMOSPHERE_SCHEMA_STR = json.dumps(AtmosphereResponse.model_json_schema(), ensure_ascii=False)
 
 
 async def execute_atmosphere_skill(request: AnalysisRequest) -> AtmosphereResponse:
@@ -27,30 +25,30 @@ async def execute_atmosphere_skill(request: AnalysisRequest) -> AtmosphereRespon
 
         sys_msg = SystemMessage(content=f"""你是资深人际关系与谈判专家。按以下步骤完成任务：
 
-步骤1: 调用 search_chat_history 检索 {request.target_person} 及双方在数据库中的全部历史聊天记录，判断长期的关系模式和权力动态演变趋势。
-步骤2: 调用 search_psychology_knowledge 获取人际动态、权力博弈、沟通姿态相关的心理学理论，作为分析依据。
-步骤3: 如有需要，可调用 web_search 获取额外的外部参考信息。
-步骤4: 综合分析后，以 JSON 格式输出最终结果。JSON Schema 如下：
-{ATMOSPHERE_SCHEMA_STR}
-
-只输出 JSON，不要有其他文字。""")
+步骤1: 调用 search_chat_history 检索历史聊天记录，判断长期的关系模式。
+步骤2: 调用 search_psychology_knowledge 获取人际动态心理学理论。
+步骤3: 如有需要，调用 web_search。
+步骤4: 综合上述信息进行分析。最终结果必须以严格的 JSON 格式输出。不要包含任何 Markdown 代码块标签，不要有前言后语。
+必须严格遵循以下 JSON Schema 规范：
+{ATMOSPHERE_SCHEMA_STR}""")
 
         user_msg = HumanMessage(content=f"""目标人物：{request.target_person}
 补充背景：{request.background_info or "无"}
 当前聊天内容：
 {chat_context}
 
-请按照以上步骤进行分析，最终以 JSON 格式直接输出结果。""")
+请执行分析，直接输出 JSON 结果。""")
 
         result = await agent_executor.ainvoke({"messages": [sys_msg, user_msg]})
         raw_output = result["messages"][-1].content
 
-        if "```json" in raw_output:
-            raw_output = raw_output.split("```json")[1].split("```")[0]
-        elif "```" in raw_output:
-            raw_output = raw_output.split("```")[1].split("```")[0]
+        # 【核心修复】正则表达式安全提取，防止 split 崩溃
+        json_match = re.search(r'\{.*\}', raw_output, re.DOTALL)
+        if not json_match:
+            raise ValueError("大模型未返回可解析的 JSON 结构")
 
-        return AtmosphereResponse.model_validate_json(raw_output.strip())
+        clean_json_str = json_match.group(0)
+        return AtmosphereResponse.model_validate_json(clean_json_str)
 
     except Exception as e:
         import traceback

@@ -1,5 +1,6 @@
 # src/skills/skill02_emotion.py
 import json
+import re
 from fastapi import HTTPException
 from src.schemas import AnalysisRequest, EmotionResponse
 from src.core_llm import base_llm
@@ -9,11 +10,8 @@ from langchain.agents import create_agent
 
 agent_executor = create_agent(model=base_llm, tools=ALL_TOOLS)
 
-EMOTION_SCHEMA_STR = json.dumps({
-    "emotion_score": "int (0-100, 0=极度消极, 50=中立, 100=极度积极)",
-    "dominant_emotion": "str (主导情感标签, 如 焦虑/开心/冷漠/试探)",
-    "analysis_reasoning": "str (详细分析推导过程)"
-}, ensure_ascii=False)
+# 动态获取 Pydantic 模型定义的 Schema，不再手动拼接易错的字符串
+EMOTION_SCHEMA_STR = json.dumps(EmotionResponse.model_json_schema(), ensure_ascii=False)
 
 
 async def execute_emotion_skill(request: AnalysisRequest) -> EmotionResponse:
@@ -27,31 +25,31 @@ async def execute_emotion_skill(request: AnalysisRequest) -> EmotionResponse:
 
         sys_msg = SystemMessage(content=f"""你是高级心理分析师。按以下步骤完成任务：
 
-步骤1: 调用 search_chat_history 检索 {request.target_person} 在数据库中的所有历史发言，了解其长期沟通模式和情绪变化趋势。
-步骤2: 调用 search_psychology_knowledge 搜索与当前对话内容相关的心理学理论，作为分析依据。
-步骤3: 如涉及外部事件、网络流行语或需要实时信息补充，可调用 web_search。
-步骤4: 综合分析后，以 JSON 格式输出最终结果。JSON Schema 如下：
-{EMOTION_SCHEMA_STR}
-
-只输出 JSON，不要有其他文字。""")
+步骤1: 调用 search_chat_history 检索历史发言。
+步骤2: 调用 search_psychology_knowledge 搜索相关的心理学理论。
+步骤3: 如需要，可调用 web_search 获取实时信息。
+步骤4: 综合分析后，以严格的 JSON 格式输出最终结果。不要包含任何 Markdown 代码块标签，不要有任何前言后语。
+必须严格遵循以下 JSON Schema 规范：
+{EMOTION_SCHEMA_STR}""")
 
         user_msg = HumanMessage(content=f"""目标人物：{request.target_person}
 补充背景：{request.background_info or "无"}
 当前聊天内容：
 {chat_context}
 
-请按照以上步骤进行分析，最终以 JSON 格式直接输出结果。""")
+请按照以上步骤进行分析，直接输出 JSON 结果。""")
 
         result = await agent_executor.ainvoke({"messages": [sys_msg, user_msg]})
         raw_output = result["messages"][-1].content
 
-        # 尝试从输出中提取 JSON（LLM 可能包裹在 ```json...``` 中）
-        if "```json" in raw_output:
-            raw_output = raw_output.split("```json")[1].split("```")[0]
-        elif "```" in raw_output:
-            raw_output = raw_output.split("```")[1].split("```")[0]
+        # 【核心修复】使用正则表达式提取大括号及内部内容，彻底抛弃 split()
+        # 无论大模型是否加上了 ```json 或者输出了多余的废话，都能精准命中 JSON
+        json_match = re.search(r'\{.*\}', raw_output, re.DOTALL)
+        if not json_match:
+            raise ValueError("大模型未返回可解析的 JSON 结构")
 
-        return EmotionResponse.model_validate_json(raw_output.strip())
+        clean_json_str = json_match.group(0)
+        return EmotionResponse.model_validate_json(clean_json_str)
 
     except Exception as e:
         import traceback
