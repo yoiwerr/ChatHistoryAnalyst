@@ -21,8 +21,12 @@ async def execute_emotion_skill(request: AnalysisRequest) -> EmotionResponse:
 
         chat_context = "\n".join([f"[{c.timestamp}] {c.sender}: {c.content}" for c in request.recent_chat])
 
-        sys_msg = SystemMessage(content="你是一个高级心理分析师。请调用 search_psychology_knowledge 搜索相关的心理学理论，"
-                                        "并结合上下文，深度分析目标人物在对话中的情感状态。")
+        sys_msg = SystemMessage(content="你是一个高级心理分析师。请按以下步骤进行分析：\n"
+                                        "1. 先调用 search_chat_history 检索目标人物在数据库中的全部历史发言，"
+                                        "了解长期的沟通模式和情绪变化趋势。\n"
+                                        "2. 再调用 search_psychology_knowledge 搜索相关的心理学理论，"
+                                        "结合历史上下文和当前聊天内容，深度分析目标人物当前的情感状态。\n"
+                                        "3. 如涉及外部事件或网络梗，可调用 web_search 补充背景。")
         user_msg = HumanMessage(content=f"目标人物：{request.target_person}\n"
                                         f"补充背景：{request.background_info}\n"
                                         f"当前聊天内容：\n{chat_context}\n\n"

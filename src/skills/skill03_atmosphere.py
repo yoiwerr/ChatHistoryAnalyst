@@ -21,8 +21,12 @@ async def execute_atmosphere_skill(request: AnalysisRequest) -> AtmosphereRespon
 
         chat_context = "\n".join([f"[{c.timestamp}] {c.sender}: {c.content}" for c in request.recent_chat])
 
-        sys_msg = SystemMessage(content="你是一名资深的人际关系与谈判专家。请调用 search_psychology_knowledge 获取人际动态和权力博弈相关的心理学理论，"
-                                        "来分析这段聊天的整体气氛以及双方的权力动态。")
+        sys_msg = SystemMessage(content="你是一名资深的人际关系与谈判专家。请按以下步骤进行分析：\n"
+                                        "1. 先调用 search_chat_history 检索双方在数据库中的全部历史聊天记录，"
+                                        "判断长期的关系模式和权力动态演变趋势。\n"
+                                        "2. 再调用 search_psychology_knowledge 获取人际动态、权力博弈相关的心理学理论，"
+                                        "结合历史背景和当前对话内容，深度剖析当前聊天气氛及权力结构。\n"
+                                        "3. 如有需要，可调用 web_search 获取相关的外部参考信息。")
         user_msg = HumanMessage(content=f"目标人物：{request.target_person}\n"
                                         f"补充背景：{request.background_info}\n"
                                         f"当前聊天内容：\n{chat_context}\n\n"

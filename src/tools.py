@@ -1,52 +1,7 @@
 # src/tools.py
-import os
-from dotenv import load_dotenv
-from langchain.chat_models import init_chat_model
-from langchain_classic.agents import create_react_agent
 from langchain_core.tools import tool
-from langchain_openai import OpenAIEmbeddings
-from langchain_postgres.vectorstores import PGVector
 from langchain_community.tools.tavily_search import TavilySearchResults
-
-# 加载环境变量
-load_dotenv()
-api_key = os.getenv("DASHSCOPE_API_KEY")
-base_url = os.getenv("DASHSCOPE_BASE_URL")
-pgpass = os.getenv("PGSQLPASSWORD")
-
-# ==========================================
-# 1. 数据库与 Embedding 配置
-# ==========================================
-# 注意：替换为你真实的 PG 数据库账号密码
-CONNECTION_STRING = f"postgresql+psycopg2://postgres:{pgpass}@localhost:5432/chatdemopg"
-
-model = init_chat_model(
-    model="text-embedding-async-v1",
-    model_provider = "openai",
-    base_url = base_url,
-    api_key = api_key
-)
-
-embeddings = OpenAIEmbeddings(
-    model= model,
-
-)
-
-# 【永久库】：心理学资料、理论文献
-knowledge_store = PGVector(
-    embeddings=embeddings,
-    collection_name="psychology_knowledge",
-    connection=CONNECTION_STRING,
-    use_jsonb=True
-)
-
-# 【临时库】：历史聊天记录
-chat_history_store = PGVector(
-    embeddings=embeddings,
-    collection_name="chat_history_temp",
-    connection=CONNECTION_STRING,
-    use_jsonb=True
-)
+from src.rag_function import knowledge_store, save_chats_to_long_term_memory, chat_history_store
 
 # ==========================================
 # 2. 定义 Agent 可以调用的 Tools
@@ -84,9 +39,7 @@ tavily_tool.name = "web_search"
 tavily_tool.description = """
 当你需要搜索最新的心理学论文、网络流行语的含义、或者遇到本地知识库无法解答的外部实时信息时，调用此工具进行全网搜索。
 """
-a = create_react_agent((
 
-))
 # 统一导出所有工具
 ALL_TOOLS = [search_psychology_knowledge, search_chat_history, tavily_tool]
 
@@ -95,11 +48,7 @@ ALL_TOOLS = [search_psychology_knowledge, search_chat_history, tavily_tool]
 # ==========================================
 def inject_chats_to_temp_db(documents):
     """
-    在执行技能前调用此函数，将聊天记录转为 Document 列表存入 chat_history_temp 库。
-    为了保持是临时库，你可以选择在插入前先清空旧数据。
+    将聊天记录追加到向量库，不再清空旧数据，让 RAG 能检索到历史积累的全部记录。
     """
-    # 清空旧数据的简单逻辑（根据你的需求决定是否保留长期记忆）
-    chat_history_store.drop_tables()
-    # 重新存入当前对话
     chat_history_store.add_documents(documents)
-    print("✅ 历史聊天记录已存入临时向量库！")
+    print(f"✅ 已向向量库追加 {len(documents)} 条聊天记录。")

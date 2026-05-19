@@ -1,22 +1,17 @@
 from fastapi import FastAPI, HTTPException
 import re
 from typing import List, Optional
-from src.schemas import ImportRequest, AnalysisRequest, ChatMessage
-from src.core_llm import llm
-from langchain_core.prompts import ChatPromptTemplate
-from fastapi import FastAPI, HTTPException
-import re
-from src.schemas import ImportRequest, AnalysisRequest, ChatMessage, EmotionResponse,AtmosphereResponse
-from src.skills.skill02_emotion import execute_emotion_skill
+from src.schemas import ImportRequest, AnalysisRequest, ChatMessage, EmotionResponse, AtmosphereResponse
 from src.skills.skill01_imitate import execute_imitate_skill
+from src.skills.skill02_emotion import execute_emotion_skill
 from src.skills.skill03_atmosphere import execute_atmosphere_skill
-from rag_function import save_chats_to_long_term_memory
+from src.rag_function import save_chats_to_long_term_memory
 
 app = FastAPI(title="Chat Analysis Agent API", version="1.0")
 @app.post("/api/v1/import_chat", tags=["Data Processing"])
 async def import_chat_data(request: ImportRequest):
     """
-    数据接入层：支持纯文本解析和 JSON 直接导入，统一格式化为标准数据流。
+    数据接入层：解析聊天记录并自动存入 RAG 向量库。
     """
     parsed_chats: List[ChatMessage] = []
 
@@ -46,9 +41,20 @@ async def import_chat_data(request: ImportRequest):
     else:
         raise HTTPException(status_code=400, detail="缺少数据，或者 format_type 未知。")
 
+    # 自动存入 RAG 向量库
+    rag_message = ""
+    if parsed_chats:
+        try:
+            rag_message = save_chats_to_long_term_memory(
+                recent_chats=parsed_chats,
+                target_person=request.target_person
+            )
+        except Exception as e:
+            print(f"RAG 写入失败: {e}")
+
     return {
         "status": "success",
-        "message": f"成功导入 {len(parsed_chats)} 条聊天记录。",
+        "message": f"成功导入 {len(parsed_chats)} 条聊天记录。{rag_message}",
         "data": parsed_chats
     }
 

@@ -19,6 +19,7 @@ class ImportRequest(BaseModel):
     format_type: str = Field(description="数据格式，必须是 'text' 或 'json'")
     text_data: Optional[str] = None
     json_data: Optional[List[dict]] = None
+    target_person: str = Field(default="Unknown", description="分析目标对象名称")
 
 class EmotionResponse(BaseModel):
     """

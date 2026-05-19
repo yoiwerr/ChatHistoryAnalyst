@@ -1,8 +1,44 @@
 # src/rag_function.py
-from src.tools import chat_history_store, knowledge_store
+import os
+from dotenv import load_dotenv
 from langchain_core.documents import Document
 from typing import List
 from src.schemas import ChatMessage
+from langchain_openai import OpenAIEmbeddings
+from langchain_postgres.vectorstores import PGVector
+
+load_dotenv()
+api_key = os.getenv("DASHSCOPE_API_KEY")
+base_url = os.getenv("DASHSCOPE_BASE_URL")
+pgpass = os.getenv("PGSQLPASSWORD")
+
+# ==========================================
+# 1. 数据库与 Embedding 配置
+# ==========================================
+# 注意：替换为你真实的 PG 数据库账号密码
+CONNECTION_STRING = f"postgresql+psycopg2://postgres:{pgpass}@localhost:5432/chatdemopg"
+
+embeddings = OpenAIEmbeddings(
+    model = "text-embedding-v1",
+    openai_api_key = api_key,
+    openai_api_base = base_url
+)
+
+# 【永久库】：心理学资料、理论文献
+knowledge_store = PGVector(
+    embeddings=embeddings,
+    collection_name="psychology_knowledge",
+    connection=CONNECTION_STRING,
+    use_jsonb=True
+)
+
+# 【历史库】：聊天记录（持久积累，不再清空）
+chat_history_store = PGVector(
+    embeddings=embeddings,
+    collection_name="chat_history",
+    connection=CONNECTION_STRING,
+    use_jsonb=True
+)
 
 
 def save_chats_to_long_term_memory(recent_chats: List[ChatMessage], target_person: str) -> str:

@@ -23,8 +23,10 @@ async def execute_imitate_skill(request: AnalysisRequest):
         chat_context = "\n".join([f"[{c.timestamp}] {c.sender}: {c.content}" for c in request.recent_chat])
 
         sys_msg = SystemMessage(content="你是一个顶级的聊天模仿大师。你需要精准模仿目标人物的语气。\n"
-                                        "在模仿前，请务必调用 search_chat_history 工具查询目标人物的历史发言风格。\n"
-                                        "如果聊天中涉及不懂的梗或外部实时信息（如天气），请调用 web_search。")
+                                        "在模仿前，请务必调用 search_chat_history 工具查询目标人物在数据库中的所有历史发言，"
+                                        "结合历史记录和当前上下文来把握对方的语气、用词习惯和口头禅。\n"
+                                        "如果涉及不懂的梗或外部实时信息（如天气、新闻），请调用 web_search。\n"
+                                        "如果需要心理学知识辅助理解人物性格，可调用 search_psychology_knowledge。")
 
         user_msg = HumanMessage(content=f"目标人物：{request.target_person}\n"
                                         f"补充背景：{request.background_info}\n"
