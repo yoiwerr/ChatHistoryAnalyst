@@ -5,9 +5,9 @@ from langchain_core.documents import Document
 from typing import List
 from src.schemas import ChatMessage
 
-# 【核心修改 1】废弃 OpenAI 兼容层，引入原生的 DashScope 向量模型
 from langchain_community.embeddings import DashScopeEmbeddings
 from langchain_postgres.vectorstores import PGVector
+from sqlalchemy import create_engine, text
 
 load_dotenv()
 api_key = os.getenv("DASHSCOPE_API_KEY")
@@ -21,11 +21,69 @@ CONNECTION_STRING = os.getenv(
     f"postgresql+psycopg2://postgres:{pgpass}@localhost:5432/chatdemopg"
 )
 
-# 【核心修改 2】使用 DashScope 原生向量接口
 embeddings = DashScopeEmbeddings(
-    model="text-embedding-v1",
+    model="qwen3-rerank",
     dashscope_api_key=api_key
 )
+
+
+def _get_embedding_dim() -> int:
+    """返回当前嵌入模型输出的向量维度。"""
+    return len(embeddings.embed_query("test"))
+
+
+def _get_stored_vector_dim() -> int | None:
+    """查询 pgvector 表中已存储向量的维度，若无数据则返回 None。"""
+    engine = None
+    try:
+        engine = create_engine(CONNECTION_STRING)
+        with engine.connect() as conn:
+            exists = conn.execute(text(
+                "SELECT EXISTS (SELECT FROM information_schema.tables "
+                "WHERE table_name = 'langchain_pg_embedding')"
+            ))
+            if not exists.fetchone()[0]:
+                return None
+            row = conn.execute(text(
+                "SELECT vector_dims(embedding) FROM langchain_pg_embedding LIMIT 1"
+            ))
+            result = row.fetchone()
+            if result:
+                return result[0]
+    except Exception:
+        pass
+    finally:
+        if engine:
+            engine.dispose()
+    return None
+
+
+def _fix_dimension_mismatch():
+    """检测向量维度是否匹配，不匹配则清空旧表以便重建。"""
+    stored_dim = _get_stored_vector_dim()
+    if stored_dim is None:
+        return
+    current_dim = _get_embedding_dim()
+    if stored_dim != current_dim:
+        print(f"⚠️ 向量维度不匹配: 表中={stored_dim}, 当前模型={current_dim}。正在清空旧数据...")
+        engine = None
+        try:
+            engine = create_engine(CONNECTION_STRING)
+            with engine.connect() as conn:
+                conn.execute(text("DROP TABLE IF EXISTS langchain_pg_embedding CASCADE"))
+                conn.execute(text("DROP TABLE IF EXISTS langchain_pg_collection CASCADE"))
+                conn.commit()
+            print("✅ 旧向量表已清除，下次写入时将使用正确维度重建。")
+            print("📌 请重新导入知识文件: POST /api/v1/import_knowledge?file_name=DBL.txt 等")
+        except Exception as e:
+            print(f"清除旧向量表失败: {e}")
+        finally:
+            if engine:
+                engine.dispose()
+
+
+# 模块加载时自动检测并修复维度不匹配
+_fix_dimension_mismatch()
 
 # 【永久库】：心理学资料、理论文献
 knowledge_store = PGVector(

@@ -54,7 +54,18 @@
       "Bash(pip show *)",
       "Bash(.venv/bin/python --version)",
       "Bash(.venv/bin/python *)",
-      "Bash(python *)"
+      "Bash(python *)",
+      "Read(//mnt/c/Users/yoiwerr/**)",
+      "Bash(ls -la \\\\\\\\wsl.localhost\\\\Ubuntu\\\\home\\\\yoiwerr\\\\ChatHistoryAnalyst/)",
+      "Read(//mnt/c/wsl.localhost/Ubuntu/home/yoiwerr/**)",
+      "Bash(ls -la \"\\\\\\\\wsl.localhost\\\\Ubuntu\\\\home\\\\yoiwerr\\\\ChatHistoryAnalyst\")",
+      "Bash(ls *)",
+      "Bash(cd \"\\\\\\\\wsl.localhost\\\\Ubuntu\\\\home\\\\yoiwerr\\\\ChatHistoryAnalyst\")",
+      "Bash(npx skills *)",
+      "Read(//home/yoiwerr/.claude/**)",
+      "Read(//home/yoiwerr/**)",
+      "Read(///wsl.localhost/Ubuntu//**)",
+      "WebFetch(domain:skills.sh)"
     ]
   }
 }

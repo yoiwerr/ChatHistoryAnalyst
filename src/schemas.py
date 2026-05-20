@@ -20,6 +20,7 @@ class ImportRequest(BaseModel):
     text_data: Optional[str] = None
     json_data: Optional[List[dict]] = None
     target_person: str = Field(default="Unknown", description="分析目标对象名称")
+    save_to_rag: bool = Field(default=False, description="是否存入长期记忆向量库")
 
 class EmotionResponse(BaseModel):
     """

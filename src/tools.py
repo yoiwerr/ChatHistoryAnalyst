@@ -16,7 +16,13 @@ def search_psychology_knowledge(query: str) -> str:
     输入参数 query 应该是你想查询的心理学关键词或现象描述。
     """
     print(f"🛠️ [Tool调用] 正在知识库中检索: {query}")
-    results = knowledge_store.similarity_search(query, k=3)
+    try:
+        results = knowledge_store.similarity_search(query, k=3)
+    except Exception as e:
+        err = str(e)
+        if "different vector dimensions" in err:
+            return "向量库维度不匹配，请先调用 POST /api/v1/import_knowledge 重新导入知识文件。"
+        return f"知识库检索失败: {err}"
     if not results:
         return "本地心理学知识库中未找到相关内容。"
     return "\n\n".join([f"理论参考: {doc.page_content}" for doc in results])
@@ -29,7 +35,13 @@ def search_chat_history(query: str) -> str:
     输入参数 query 应该是具体的话题或你想寻找的对方的历史发言特征。
     """
     print(f"🛠️ [Tool调用] 正在历史记录中检索: {query}")
-    results = chat_history_store.similarity_search(query, k=5)
+    try:
+        results = chat_history_store.similarity_search(query, k=5)
+    except Exception as e:
+        err = str(e)
+        if "different vector dimensions" in err:
+            return "向量库维度不匹配，历史记录表需要重建，请重新导入聊天记录。"
+        return f"历史记录检索失败: {err}"
     if not results:
         return "未找到相关的历史聊天记录。"
     return "\n".join([f"历史记录: {doc.page_content}" for doc in results])

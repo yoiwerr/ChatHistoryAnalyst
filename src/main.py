@@ -81,9 +81,8 @@ async def import_chat_data(request: ImportRequest):
     else:
         raise HTTPException(status_code=400, detail="缺少数据，或者 format_type 未知。")
 
-    # 自动存入 RAG 向量库
     rag_message = ""
-    if parsed_chats:
+    if parsed_chats and request.save_to_rag:
         try:
             rag_message = save_chats_to_long_term_memory(
                 recent_chats=parsed_chats,
