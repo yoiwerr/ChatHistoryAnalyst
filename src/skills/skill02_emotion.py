@@ -25,7 +25,7 @@ async def execute_emotion_skill(request: AnalysisRequest) -> EmotionResponse:
 
         sys_msg = SystemMessage(content=f"""你是高级心理分析师。按以下步骤完成任务：
 
-步骤1: 调用 search_chat_history 检索历史发言。
+步骤1: 调用 search_chat_history 检索历史发言，必须传入 target_person 参数为目标人物名称。
 步骤2: 调用 search_psychology_knowledge 搜索相关的心理学理论。
 步骤3: 如需要，可调用 web_search 获取实时信息。
 步骤4: 综合分析后，以严格的 JSON 格式输出最终结果。不要包含任何 Markdown 代码块标签，不要有任何前言后语。

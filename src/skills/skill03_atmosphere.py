@@ -25,7 +25,7 @@ async def execute_atmosphere_skill(request: AnalysisRequest) -> AtmosphereRespon
 
         sys_msg = SystemMessage(content=f"""你是资深人际关系与谈判专家。按以下步骤完成任务：
 
-步骤1: 调用 search_chat_history 检索历史聊天记录，判断长期的关系模式。
+步骤1: 调用 search_chat_history 检索历史聊天记录，必须传入 target_person 参数为目标人物名称，以判断长期的关系模式。
 步骤2: 调用 search_psychology_knowledge 获取人际动态心理学理论。
 步骤3: 如有需要，调用 web_search。
 步骤4: 综合上述信息进行分析。最终结果必须以严格的 JSON 格式输出。不要包含任何 Markdown 代码块标签，不要有前言后语。

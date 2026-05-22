@@ -10,7 +10,7 @@ from src.schemas import ImportRequest, AnalysisRequest, ChatMessage, EmotionResp
 from src.skills.skill01_imitate import execute_imitate_skill
 from src.skills.skill02_emotion import execute_emotion_skill
 from src.skills.skill03_atmosphere import execute_atmosphere_skill
-from src.rag_function import save_chats_to_long_term_memory, import_knowledge_file, list_imported_files
+from src.rag_function import save_chats_to_long_term_memory, import_knowledge_file, list_imported_files, clear_vector_stores
 from src.core_llm import vision_llm
 
 app = FastAPI(title="Chat Analysis Agent API", version="1.0")
@@ -244,3 +244,13 @@ async def get_imported_files():
     """查看已导入知识库的文件列表。"""
     files = list_imported_files()
     return {"status": "success", "imported_files": files}
+
+
+@app.delete("/api/v1/clear_vector_store", tags=["Memory Management"])
+async def clear_vector_store_endpoint():
+    """
+    清理所有向量表（langchain_pg_embedding + langchain_pg_collection）。
+    用于向量维度变更后重建，调用后需重新导入知识文件和聊天记录。
+    """
+    result = clear_vector_stores()
+    return {"status": "success", "message": result}

@@ -65,7 +65,16 @@
       "Read(//home/yoiwerr/.claude/**)",
       "Read(//home/yoiwerr/**)",
       "Read(///wsl.localhost/Ubuntu//**)",
-      "WebFetch(domain:skills.sh)"
+      "WebFetch(domain:skills.sh)",
+      "WebFetch(domain:ecs-buy.aliyun.com)",
+      "Read(//mnt/c/Users/user/Home/**)",
+      "Bash(ls -la \\\\\\\\wsl.localhost\\\\Ubuntu\\\\home\\\\yoiwerr\\\\ChatHistoryAnalyst)",
+      "Bash(git -C \"//wsl.localhost/Ubuntu/home/yoiwerr/ChatHistoryAnalyst\" log --oneline -30)",
+      "Bash(git *)",
+      "Skill(office-hours)",
+      "Bash(mkdir -p /mnt/c/Users/yoiwerr/claude/plans/../../wsl.localhost/Ubuntu/home/yoiwerr/ChatHistoryAnalyst/nginx /mnt/c/Users/yoiwerr/claude/plans/../../wsl.localhost/Ubuntu/home/yoiwerr/ChatHistoryAnalyst/portfolio /mnt/c/Users/yoiwerr/claude/plans/../../wsl.localhost/Ubuntu/home/yoiwerr/ChatHistoryAnalyst/scripts)",
+      "Bash(ls -d \\\\\\\\wsl.localhost\\\\Ubuntu\\\\home\\\\yoiwerr\\\\ChatHistoryAnalyst/nginx)",
+      "Bash(chmod +x *)"
     ]
   }
 }
