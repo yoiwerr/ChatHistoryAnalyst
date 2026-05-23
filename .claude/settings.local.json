@@ -74,7 +74,11 @@
       "Skill(office-hours)",
       "Bash(mkdir -p /mnt/c/Users/yoiwerr/claude/plans/../../wsl.localhost/Ubuntu/home/yoiwerr/ChatHistoryAnalyst/nginx /mnt/c/Users/yoiwerr/claude/plans/../../wsl.localhost/Ubuntu/home/yoiwerr/ChatHistoryAnalyst/portfolio /mnt/c/Users/yoiwerr/claude/plans/../../wsl.localhost/Ubuntu/home/yoiwerr/ChatHistoryAnalyst/scripts)",
       "Bash(ls -d \\\\\\\\wsl.localhost\\\\Ubuntu\\\\home\\\\yoiwerr\\\\ChatHistoryAnalyst/nginx)",
-      "Bash(chmod +x *)"
+      "Bash(chmod +x *)",
+      "Bash(export PATH=\"/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin\")",
+      "Bash(test -d /home/yoiwerr/ChatHistoryAnalyst/portfolio)",
+      "Bash(echo \"EXISTS\")",
+      "Bash(echo \"DELETED\")"
     ]
   }
 }

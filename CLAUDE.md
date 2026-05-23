@@ -89,8 +89,7 @@ FastAPI (:8000) ── src/main.py
 | `.env` | API keys + DB creds (gitignored, see `.env.example` for template) |
 | `Dockerfile` | Single Python 3.12 image for both API and Streamlit |
 | `docker-compose.yml` | Orchestrates nginx + api + streamlit + postgres (pgvector) |
-| `nginx/nginx.conf` | Reverse proxy: `/` → portfolio, `/chatlab` → Streamlit, `/api` → FastAPI |
-| `portfolio/index.html` | Project gallery homepage (ChatLab card + placeholder slots) |
+| `nginx/nginx.conf` | Reverse proxy: `/` → Streamlit, `/api` → FastAPI |
 | `scripts/deploy.sh` | One-click server deployment script |
 | `TODO.md` | Server setup steps for the user to complete |
 
@@ -105,39 +104,45 @@ FastAPI (:8000) ── src/main.py
 
 ## Progress
 
-**Phase**: [阶段一: 需求对齐] → [阶段二: 架构设计] → [阶段三: 精确执行] ← we are here → [阶段四: 脱水沉淀]
+**Phase**: [阶段一: 需求对齐] ✅ → [阶段二: 架构设计] ✅ → [阶段三: 精确执行] ← we are here → [阶段四: 脱水沉淀]
 
-**Done:**
-- Three skill agents working with RAG tools
-- FastAPI backend with 8 endpoints
-- Streamlit frontend with file upload, OCR, and analysis display
-- PGVector dual-store RAG with psychology knowledge base
-- Knowledge import pipeline (`import_knowledge.py`)
-- Docker Compose deployment (nginx + api + streamlit + postgres)
-- Portfolio homepage at `/`, ChatLab at `/chatlab`
-- Database host configurable via `DB_HOST` env var
+**Done (核心功能):**
+- 三个 Skill Agent：语气模仿、情感分析、气氛分析，均接入 RAG 工具
+- FastAPI 后端：8 个 API 端点（导入、分析、记忆管理、知识库管理）
+- Streamlit 前端：文件上传、截图 OCR、聊天预览、分析结果可视化
+- PGVector 双库 RAG：心理学知识库（`data/*.txt`）+ 聊天历史库
+- 知识导入流水线 (`import_knowledge.py`)
 
-**In progress (uncommitted changes as of 2026-05-22):**
-- `src/main.py` — API enhancements
-- `src/rag_function.py` — RAG improvements
-- `src/tools.py` — tool refinements
-- `src/skills/*` — skill prompt tuning
-- `README.md` — documentation updates
-- Deployment files added (Dockerfile, docker-compose.yml, nginx, portfolio, scripts)
+**Done (部署基础设施，本次 session):**
+- Dockerfile（Python 3.12 镜像）
+- docker-compose.yml（nginx + api + streamlit + postgres/pgvector）
+- nginx 反向代理（`/` → Streamlit，`/api` → FastAPI）
+- 一键部署脚本 `scripts/deploy.sh`
+- `src/rag_function.py` 支持 `DB_HOST`/`DB_PORT` 环境变量
+- `front/frontend.py` BASE_URL 支持 `API_BASE_URL` 环境变量
+- `.env.example` / `TODO.md` 补充部署指引（含域名配置）
 
-**Next:**
-- Push to GitHub
-- Deploy to server (follow `TODO.md`)
-- Frontend optimization (阶段三 continued)
-- Feature extensions and upgrades
-- 阶段四: solidify, polish, document
+**待提交 (uncommitted):**
+- `src/main.py`、`src/rag_function.py`、`src/tools.py`、`src/skills/*` — 功能优化
+- `README.md` — 文档更新
+- 全部部署文件（本次新增）
+
+**下一步:**
+1. 域名 DNS 添加 A 记录指向服务器 IP
+2. `git add` + `git commit` + `git push` 推送到 GitHub
+3. SSH 到服务器，按 `TODO.md` 执行部署
+4. 浏览器访问 `http://<你的域名>` 验证
+5. 后续：HTTPS 证书 → 前端优化 → 功能扩展 → 阶段四沉淀
 
 ---
 
 ## Session Update
 
 ### 2026-05-22
-- **What I did**: Dockerized the project for deployment. Created Docker Compose stack (nginx + Streamlit + FastAPI + PostgreSQL/pgvector), portfolio homepage, deploy script.
-- **What changed** (files): Added Dockerfile, docker-compose.yml, nginx/nginx.conf, portfolio/index.html, scripts/deploy.sh, .dockerignore, TODO.md. Modified src/rag_function.py (DB_HOST/DB_PORT env vars), .env.example. Updated CLAUDE.md.
-- **What's next**: User to follow TODO.md for server setup and deployment. Push to GitHub first.
-- **Blockers / notes**: Server firewall/安全组 must open port 80. No domain yet — using IP.
+- **What I did**: Dockerized the project for deployment. Created Docker Compose stack (nginx + Streamlit + FastAPI + PostgreSQL/pgvector), deploy script.
+
+### 2026-05-23
+- **What I did**: Removed portfolio homepage — Streamlit is now the main page at `/`. Bought domain, updated TODO.md with DNS setup instructions. Fixed `BASE_URL` in frontend.py to support Docker cross-container communication via `API_BASE_URL` env var.
+- **What changed** (files): Modified nginx/nginx.conf, docker-compose.yml, front/frontend.py, scripts/deploy.sh, TODO.md, CLAUDE.md. Deleted portfolio/index.html.
+- **What's next**: User to set up DNS A record, then follow TODO.md to deploy.
+- **Blockers / notes**: Domain bought, needs DNS A record pointing to server IP. Then run deploy script.

@@ -1,8 +1,9 @@
 import streamlit as st
 import requests
 import re
+import os
 
-BASE_URL = "http://127.0.0.1:8000/api/v1"
+BASE_URL = os.environ.get("API_BASE_URL", "http://127.0.0.1:8000/api/v1")
 
 # ── 页面配置 ──────────────────────────────────
 st.set_page_config(
