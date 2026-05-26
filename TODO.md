@@ -11,7 +11,7 @@
 ```bash
 cd ~/ChatHistoryAnalyst
 git add .
-git commit -m "上线准备：Streamlit 为主页，支持域名部署"
+git commit -m "上线准备：公网 IP 部署"
 git push origin main
 ```
 
@@ -19,40 +19,7 @@ git push origin main
 
 ---
 
-## 步骤 2：DNS 添加 A 记录
-
-1. 登录你的域名服务商控制台（阿里云/腾讯云/Cloudflare 等）
-2. 找到 **DNS 解析** 页面
-3. 添加一条记录：
-
-| 字段 | 值 |
-|------|-----|
-| 主机记录 | `@`（代表根域名） |
-| 记录类型 | A |
-| 记录值 | **你的服务器公网 IP** |
-| TTL | 默认 600 |
-
-4. 如果还需要 `www.你的域名.com`，再加一条 CNAME：
-
-| 字段 | 值 |
-|------|-----|
-| 主机记录 | `www` |
-| 记录类型 | CNAME |
-| 记录值 | `@` |
-
-5. 等 5-10 分钟，验证 DNS 生效：
-
-```bash
-ping 你的域名.com
-# 应该返回你的服务器 IP
-```
-
-- [ ] DNS A 记录已添加
-- [ ] ping 域名返回正确 IP
-
----
-
-## 步骤 3：登录服务器，安装 Docker
+## 步骤 2：登录服务器，安装 Docker
 
 SSH 登录服务器后执行：
 
@@ -79,7 +46,7 @@ docker compose version
 
 ---
 
-## 步骤 4：开放防火墙端口
+## 步骤 3：开放防火墙端口
 
 ```bash
 # 服务器本地防火墙开放 80 端口
@@ -96,14 +63,12 @@ sudo ufw enable
    - 端口 `22`（SSH），来源 `0.0.0.0/0`
 3. 保存
 
-> HTTPS 配好后再回来加 443 端口。
-
 - [ ] ufw 已开放 80
 - [ ] 云控制台安全组已开放 80、22
 
 ---
 
-## 步骤 5：克隆项目到服务器
+## 步骤 4：克隆项目到服务器
 
 ```bash
 # 用你的 GitHub 仓库地址替换 <your-repo-url>
@@ -117,7 +82,7 @@ ls
 
 ---
 
-## 步骤 6：执行一键部署
+## 步骤 5：执行一键部署
 
 ```bash
 cd ~/ChatHistoryAnalyst
@@ -139,7 +104,7 @@ chmod +x scripts/deploy.sh
 
 ---
 
-## 步骤 7：验证部署
+## 步骤 6：验证部署
 
 ```bash
 # 确认 4 个容器都在运行
@@ -155,7 +120,7 @@ curl http://localhost/api/v1/imported_files
 # 应该返回 JSON（可能为空列表）
 ```
 
-然后浏览器访问：`http://你的域名.com`
+然后浏览器访问：`http://<你的服务器公网IP>`
 
 - [ ] 4 个容器全部 Running
 - [ ] curl 测试通过
@@ -163,42 +128,13 @@ curl http://localhost/api/v1/imported_files
 
 ---
 
-## 步骤 8：配置 HTTPS（用 Let's Encrypt 免费证书）
-
-```bash
-# 安装 certbot
-sudo apt install certbot python3-certbot-nginx -y
-
-# 获取证书并自动配置 nginx
-sudo certbot --nginx -d 你的域名.com
-
-# 按提示输入邮箱，同意条款，选择是否重定向 HTTP → HTTPS（建议选 2 redirect）
-```
-
-完成后 nginx 会自动加上 SSL。测试自动续期：
-
-```bash
-sudo certbot renew --dry-run
-# 应该看到 "Congratulations"
-```
-
-最后在云控制台安全组添加端口 `443`（HTTPS）。
-
-- [ ] certbot 已安装
-- [ ] SSL 证书已获取
-- [ ] `https://你的域名.com` 访问成功
-- [ ] 安全组已开放 443
-- [ ] 自动续期测试通过
-
----
-
 ## 完成后的访问地址
 
 | 内容 | 地址 |
 |------|------|
-| ChatLab 主界面 | `https://你的域名.com` |
-| API 文档 (Swagger) | `https://你的域名.com/api/docs` |
-| API 接口 | `https://你的域名.com/api/v1/` |
+| ChatLab 主界面 | `http://<你的服务器公网IP>` |
+| API 文档 (Swagger) | `http://<你的服务器公网IP>/api/docs` |
+| API 接口 | `http://<你的服务器公网IP>/api/v1/` |
 
 ---
 
@@ -213,7 +149,6 @@ docker compose restart api          # 重启 API
 docker compose restart streamlit    # 重启前端
 docker compose down                 # 停止所有服务
 docker compose up -d                # 启动所有服务
-docker compose pull                 # 拉取最新基础镜像
 docker compose up -d --build        # 重新构建并启动（更新代码后）
 ```
 
