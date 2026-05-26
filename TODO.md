@@ -33,6 +33,23 @@ sudo usermod -aG docker $USER
 # 激活组权限（或直接重新 SSH 登录）
 newgrp docker
 
+# ===== 国内服务器必做：配置 Docker 镜像加速 =====
+# 不配这一步会报 DeadlineExceeded 超时（Docker Hub 被墙）
+sudo mkdir -p /etc/docker
+sudo tee /etc/docker/daemon.json <<'EOF'
+{
+  "registry-mirrors": [
+    "https://docker.1ms.run",
+    "https://docker.xuanyuan.me"
+  ]
+}
+EOF
+sudo systemctl daemon-reload
+sudo systemctl restart docker
+
+# 验证镜像加速生效
+docker info | grep -A5 "Registry Mirrors"
+
 # 安装 docker compose 插件
 sudo apt update && sudo apt install docker-compose-plugin -y
 
@@ -42,6 +59,7 @@ docker compose version
 ```
 
 - [ ] Docker 已安装
+- [ ] Docker 镜像加速已配置（国内服务器必做）
 - [ ] docker compose 插件已安装
 
 ---
@@ -87,7 +105,7 @@ ls
 ```bash
 cd ~/ChatHistoryAnalyst
 chmod +x scripts/deploy.sh
-./scripts/deploy.sh
+
 ```
 
 脚本会依次：
