@@ -113,26 +113,19 @@ FastAPI (:8000) ── src/main.py
 - PGVector 双库 RAG：心理学知识库（`data/*.txt`）+ 聊天历史库
 - 知识导入流水线 (`import_knowledge.py`)
 
-**Done (部署基础设施，本次 session):**
-- Dockerfile（Python 3.12 镜像）
+**Done (部署修复，本次 session):**
+- Dockerfile（Python 3.12 镜像）+ 国内源镜像加速（apt/pip 阿里云镜像）
 - docker-compose.yml（nginx + api + streamlit + postgres/pgvector）
-- nginx 反向代理（`/` → Streamlit，`/api` → FastAPI）
+- nginx 反向代理（`/` → Streamlit，`/api` → FastAPI，运行时 DNS 解析）
 - 一键部署脚本 `scripts/deploy.sh`
 - `src/rag_function.py` 支持 `DB_HOST`/`DB_PORT` 环境变量
 - `front/frontend.py` BASE_URL 支持 `API_BASE_URL` 环境变量
-- `.env.example` / `TODO.md` 补充部署指引（含域名配置）
-
-**待提交 (uncommitted):**
-- `src/main.py`、`src/rag_function.py`、`src/tools.py`、`src/skills/*` — 功能优化
-- `README.md` — 文档更新
-- 全部部署文件（本次新增）
+- `.env.example` / `TODO.md` 重写为公网 IP 部署（去掉域名和 HTTPS）
+- 服务器已部署成功
 
 **下一步:**
-1. 域名 DNS 添加 A 记录指向服务器 IP
-2. `git add` + `git commit` + `git push` 推送到 GitHub
-3. SSH 到服务器，按 `TODO.md` 执行部署
-4. 浏览器访问 `http://<你的域名>` 验证
-5. 后续：HTTPS 证书 → 前端优化 → 功能扩展 → 阶段四沉淀
+- 浏览器访问 `http://<公网IP>` 验证
+- 前端优化 → 功能扩展 → 阶段四沉淀
 
 ---
 
@@ -144,5 +137,9 @@ FastAPI (:8000) ── src/main.py
 ### 2026-05-23
 - **What I did**: Removed portfolio homepage — Streamlit is now the main page at `/`. Bought domain, updated TODO.md with DNS setup instructions. Fixed `BASE_URL` in frontend.py to support Docker cross-container communication via `API_BASE_URL` env var.
 - **What changed** (files): Modified nginx/nginx.conf, docker-compose.yml, front/frontend.py, scripts/deploy.sh, TODO.md, CLAUDE.md. Deleted portfolio/index.html.
-- **What's next**: User to set up DNS A record, then follow TODO.md to deploy.
-- **Blockers / notes**: Domain bought, needs DNS A record pointing to server IP. Then run deploy script.
+
+### 2026-05-26
+- **What I did**: 国内服务器部署成功。重写 TODO.md 为公网 IP 部署（去掉域名/HTTPS）。Dockerfile 添加 apt/pip 阿里云镜像源。修复 nginx 运行时 DNS 解析（`host not found in upstream`）和 proxy_pass 变量模式 URI 被覆盖问题。服务器 80 端口被宿主机 nginx 占用，停掉后切换为 Docker nginx。
+- **What changed** (files): Modified TODO.md, Dockerfile, nginx/nginx.conf, CLAUDE.md.
+- **What's next**: 浏览器 `http://<公网IP>` 验证。后续安装 sing-box 代理和 Claude Code。
+- **Blockers / notes**: 服务器已有宿主机 nginx，已 `systemctl stop/disable`。Docker 镜像加速已配。API 返回正常（`/api/v1/imported_files` 返回 200）。
