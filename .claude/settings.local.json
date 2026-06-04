@@ -78,7 +78,8 @@
       "Bash(export PATH=\"/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin\")",
       "Bash(test -d /home/yoiwerr/ChatHistoryAnalyst/portfolio)",
       "Bash(echo \"EXISTS\")",
-      "Bash(echo \"DELETED\")"
+      "Bash(echo \"DELETED\")",
+      "Bash(docker compose *)"
     ]
   }
 }

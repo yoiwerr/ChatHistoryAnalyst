@@ -1,5 +1,7 @@
 # ChatHistoryAnalyst (ChatLab)
 
+> **Deployment**: This project is a sub-project of [Portal](../). See `../docker-compose.yml` for the top-level orchestration that includes nginx, homepage, and all sub-projects on a shared Docker network.
+
 AI-powered chat history analysis engine. Three core skills:
 1. **Tone Imitation** — mimic a person's speaking style and predict their next reply
 2. **Emotion Analysis** — score (0-100), dominant emotion label, reasoning

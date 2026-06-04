@@ -34,7 +34,7 @@ services:
   streamlit:
     build: .
     container_name: chalab-streamlit
-    command: streamlit run front/frontend.py --server.port 8501 --server.enableCORS false --server.enableXsrfProtection false
+    command: streamlit run front/frontend.py --server.port 8501 --server.enableCORS false --server.enableXsrfProtection false --server.baseUrlPath /chatlab
     environment:
       DASHSCOPE_API_KEY: ${DASHSCOPE_API_KEY}
       TAVILY_API_KEY: ${TAVILY_API_KEY}
@@ -46,18 +46,6 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-    restart: unless-stopped
-
-  nginx:
-    image: nginx:alpine
-    container_name: chalab-nginx
-    ports:
-      - "80:80"
-    volumes:
-      - ./nginx/nginx.conf:/etc/nginx/conf.d/default.conf:ro
-    depends_on:
-      - api
-      - streamlit
     restart: unless-stopped
 
 volumes:

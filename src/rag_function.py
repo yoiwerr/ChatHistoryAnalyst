@@ -29,9 +29,13 @@ embeddings = DashScopeEmbeddings(
 )
 
 
+# text-embedding-v3 固定输出 1024 维，无需每次启动调用 API
+EMBEDDING_DIM = 1024
+
+
 def _get_embedding_dim() -> int:
     """返回当前嵌入模型输出的向量维度。"""
-    return len(embeddings.embed_query("test"))
+    return EMBEDDING_DIM
 
 
 def _get_stored_vector_dim() -> int | None:
